@@ -1,0 +1,9 @@
+[package]
+name = "frontend"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+itertools = "0.10.5"
+termion = "2.0.1"
+tetris_core = { path = "../core/" }

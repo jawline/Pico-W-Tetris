@@ -5,3 +5,4 @@ extern crate alloc;
 pub mod grid;
 pub mod piece;
 pub mod tetris;
+pub mod draw_helper;

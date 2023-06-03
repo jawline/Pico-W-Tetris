@@ -4,11 +4,15 @@ pub struct Draw<'a, F: FnMut(usize, usize, bool)> {
     pub grid: &'a Grid,
     pub piece_grid: &'a Grid,
     pub piece_offset: (usize, usize),
-    pub blit: F
+    pub blit: F,
 }
 
 impl<F: FnMut(usize, usize, bool)> Draw<'_, F> {
-    pub fn draw_grid(&mut self, (x_off, y_off): (usize, usize), (scale_x, scale_y) : (usize, usize)) {
+    pub fn draw_grid(
+        &mut self,
+        (x_off, y_off): (usize, usize),
+        (scale_x, scale_y): (usize, usize),
+    ) {
         let (piece_x_offset, piece_y_offset) = self.piece_offset;
         for y in (0..self.grid.height).rev() {
             for x in 0..self.grid.width {
@@ -25,20 +29,16 @@ impl<F: FnMut(usize, usize, bool)> Draw<'_, F> {
                 };
 
                 let is_set = self.grid[(x, y)] || in_piece;
-                let (canvas_x, canvas_y) = (
-                    x + x_off,
-                    ((self.grid.height - y) + 1) + y_off,
-                );
+                let (canvas_x, canvas_y) = (x + x_off, ((self.grid.height - y) + 1) + y_off);
                 let (canvas_x, canvas_y) = (canvas_x * scale_x, canvas_y * scale_y);
-                let (canvas_x, canvas_y) = (canvas_x , canvas_y );
+                let (canvas_x, canvas_y) = (canvas_x, canvas_y);
 
-                    for x in 0..( scale_x ) {
-                        for y in 0..(scale_y ) {
-                            (self.blit)(canvas_x + x, canvas_y + y, is_set);
-                        }
+                for x in 0..(scale_x) {
+                    for y in 0..(scale_y) {
+                        (self.blit)(canvas_x + x, canvas_y + y, is_set);
                     }
+                }
             }
         }
     }
 }
-

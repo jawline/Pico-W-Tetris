@@ -4,7 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+enum-iterator = "1.4.1"
 enum-map = "2.5.0"
 itertools = "0.10.5"
-rand = "0.8.5"
+rand = "0.5.0"
 rand_derive = "0.5.0"

@@ -53,13 +53,16 @@ pub enum Tetris {
 
 impl Tetris {
     pub fn new() -> Self {
+        let mut rng =  thread_rng();
+        let piece = Piece::random_piece(PIECE_START_LOCATION, &mut rng);
+        let next_piece = Piece::random_piece(PIECE_START_LOCATION, &mut rng);
         Self::Running(TetrisState {
             grid: Grid::new(GRID_SIZE),
-            piece: Piece::line(PIECE_START_LOCATION),
-            next_piece: Piece::line(PIECE_START_LOCATION),
+            piece,
+            next_piece,
             key_state: KeyState::default(),
             score: 0,
-            rng: thread_rng(),
+            rng
         })
     }
 

@@ -15,6 +15,8 @@ use tetris_core::{
     tetris::{KeyState, Tetris},
 };
 
+use drawille::Canvas;
+
 struct OverlayView<'a> {
     grid: &'a Grid,
     piece_grid: &'a Grid,
@@ -22,7 +24,7 @@ struct OverlayView<'a> {
 }
 
 impl OverlayView<'_> {
-    fn draw_grid<W: Write>(&self, terminal: &mut RawTerminal<W>) {
+    fn draw_grid(&self, canvas: &mut Canvas, (x_off, y_off): (usize, usize), (scale_x, scale_y) : (usize, usize)) {
         let (piece_x_offset, piece_y_offset) = self.piece_offset;
         for y in (0..self.grid.height).rev() {
             for x in 0..self.grid.width {
@@ -38,32 +40,51 @@ impl OverlayView<'_> {
                     }
                 };
 
-                let c = if self.grid[(x, y)] || in_piece {
-                    '*'
-                } else {
-                    ' '
-                };
-
-                write!(
-                    terminal,
-                    "{}",
-                    termion::cursor::Goto((x + 1) as u16, ((self.grid.height - y) + 1) as u16)
+                let is_set = self.grid[(x, y)] || in_piece;
+                let (canvas_x, canvas_y) = (
+                    x + x_off,
+                    ((self.grid.height - y) + 1) + y_off,
                 );
-                write!(terminal, "{}", c).unwrap();
+                let (canvas_x, canvas_y) = (canvas_x * scale_x, canvas_y * scale_y);
+                let (canvas_x, canvas_y) = (canvas_x as u32, canvas_y as u32);
+
+                    for x in 0..( scale_x as u32) {
+                        for y in 0..(scale_y as u32) {
+
+                if is_set {
+                    canvas.set(canvas_x + x, canvas_y + y);
+                } else {
+                    canvas.unset(canvas_x + x, canvas_y + y);
+                }
+                        }
+                    }
             }
-            write!(terminal, "\n").unwrap();
         }
     }
 }
 
 fn draw_tetris<W: Write>(terminal: &mut RawTerminal<W>, tetris: &Tetris) {
+    let mut canvas = Canvas::new(30, 30);
+
     match tetris {
-        Tetris::Running(state) => OverlayView {
-            grid: &state.grid,
-            piece_grid: &state.piece.current_rotation(),
-            piece_offset: (state.piece.x, state.piece.y),
+        Tetris::Running(state) => {
+            write!(terminal, "{}", termion::cursor::Goto(1 as u16, 1 as u16)).unwrap();
+
+            OverlayView {
+                grid: &state.grid,
+                piece_grid: &state.piece.current_rotation(),
+                piece_offset: (state.piece.x, state.piece.y),
+            }
+            .draw_grid(&mut canvas, (0, 0), (4, 4));
+            for (idx, line) in canvas.frame().lines().enumerate() {
+                write!(terminal, "{}", termion::cursor::Goto(1 as u16, 1 + idx as u16)).unwrap();
+                write!(
+                    terminal,
+                    "{}\n",
+                    line,
+                ).unwrap();
+            }
         }
-        .draw_grid(terminal),
         Tetris::Finished => write!(terminal, "Finished").unwrap(),
     }
 }
@@ -123,7 +144,7 @@ fn main() {
             rotate: false,
         });
 
-        thread::sleep(Duration::from_millis(500));
+        thread::sleep(Duration::from_millis(250));
     }
 
     println!("END");

@@ -1,7 +1,7 @@
 use crate::grid::Grid;
 use crate::piece::Piece;
-use rand::{rngs::ThreadRng, thread_rng};
 use itertools::iproduct;
+use rand::{rngs::ThreadRng, thread_rng};
 
 const GRID_SIZE: (usize, usize) = (10, 20);
 const PIECE_START_LOCATION: (usize, usize) = (5, 19);
@@ -31,6 +31,7 @@ impl TetrisState {
         self.next_piece = Piece::random_piece(PIECE_START_LOCATION, &mut self.rng);
     }
 
+    /// Removes any cleared rows from the game grid after a piece has been placed down.
     fn remove_complete_rows(&mut self) {
         let mut rows_cleared = 0;
 
@@ -46,6 +47,8 @@ impl TetrisState {
         self.score += (rows_cleared * rows_cleared) * self.grid.width * BASE_SCORE_UNIT;
     }
 
+    /// Calls set_output (x + x_off, y + y_off, true|false) for every pixel in a scaled
+    /// tetris grid.
     pub fn draw_game_grid<F: FnMut(usize, usize, bool)>(
         &self,
         mut set_output: F,
@@ -102,6 +105,8 @@ impl Tetris {
         })
     }
 
+    /// Set the current state of all inputs to the game, to be considered on all subsequent
+    /// updates until the next call to set_key_state.
     pub fn set_key_state(&mut self, key_state: &KeyState) {
         match self {
             Self::Running(state) => state.key_state = *key_state,
@@ -109,9 +114,19 @@ impl Tetris {
         }
     }
 
+    /// Perform a single update of the game, first applying and input moves or rotations if legal,
+    /// then attempting to lower the piece by one tile. If the lowered piece collides with an
+    /// existing tile or the floor of the game grid then the piece is placed into the grid,
+    /// complete rows are considered and the piece is respawned. Upon respawn if the piece
+    /// immediately collides with the grid then the player has lost and the game is over.
+    ///
+    /// This function should be called with a frequency that matches your desired game speed,
+    /// calling it more frequently will make the game faster and more difficult.
     pub fn update(&mut self) {
         match self {
             Self::Running(state) => {
+                // Apply rotation if rotate key is pressed and the rotation would not collide with
+                // the grid.
                 if state.key_state.rotate {
                     let rotated_grid = state.piece.peek_next_rotation();
                     if !rotated_grid.collides(&state.grid, (state.piece.x, state.piece.y)) {

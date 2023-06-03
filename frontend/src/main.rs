@@ -10,11 +10,7 @@ use termion::{
     input::TermRead,
     raw::{IntoRawMode, RawTerminal},
 };
-use tetris_core::{
-    draw_helper::Draw,
-    grid::Grid,
-    tetris::{KeyState, Tetris},
-};
+use tetris_core::tetris::{KeyState, Tetris};
 
 use drawille::Canvas;
 
@@ -25,19 +21,17 @@ fn draw_tetris<W: Write>(terminal: &mut RawTerminal<W>, tetris: &Tetris) {
         Tetris::Running(state) => {
             write!(terminal, "{}", termion::cursor::Goto(1 as u16, 1 as u16)).unwrap();
 
-            Draw {
-                grid: &state.grid,
-                piece_grid: &state.piece.current_rotation(),
-                piece_offset: (state.piece.x, state.piece.y),
-                blit: |x, y, state| {
+            state.draw_game_grid(
+                |x, y, state| {
                     if state {
                         canvas.set(x as u32, y as u32);
                     } else {
                         canvas.unset(x as u32, y as u32);
                     }
                 },
-            }
-            .draw_grid((0, 0), (4, 4));
+                (0, 0),
+                (4, 4),
+            );
             for (idx, line) in canvas.frame().lines().enumerate() {
                 write!(
                     terminal,

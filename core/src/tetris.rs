@@ -1,6 +1,7 @@
 use crate::grid::Grid;
 use crate::piece::Piece;
 use rand::{rngs::ThreadRng, thread_rng};
+use itertools::iproduct;
 
 const GRID_SIZE: (usize, usize) = (10, 20);
 const PIECE_START_LOCATION: (usize, usize) = (5, 19);
@@ -43,6 +44,41 @@ impl TetrisState {
         // Combo by squaring rows_cleared, you double the base row score for each additional
         // row you clear.
         self.score += (rows_cleared * rows_cleared) * self.grid.width * BASE_SCORE_UNIT;
+    }
+
+    pub fn draw_game_grid<F: FnMut(usize, usize, bool)>(
+        &self,
+        mut set_output: F,
+        (x_off, y_off): (usize, usize),
+        (scale_x, scale_y): (usize, usize),
+    ) {
+        let (piece_x_offset, piece_y_offset) = (self.piece.x, self.piece.y);
+        let piece_grid = self.piece.current_rotation();
+
+        for (x, y) in iproduct!(0..self.grid.width, (0..self.grid.height).rev()) {
+            let in_piece = {
+                if x >= piece_x_offset
+                    && (x - piece_x_offset < piece_grid.width)
+                    && y >= piece_y_offset
+                    && (y - piece_y_offset < piece_grid.height)
+                {
+                    piece_grid[(x - piece_x_offset, y - piece_y_offset)]
+                } else {
+                    false
+                }
+            };
+
+            let is_set = self.grid[(x, y)] || in_piece;
+            let (canvas_x, canvas_y) = (x + x_off, ((self.grid.height - y) + 1) + y_off);
+            let (canvas_x, canvas_y) = (canvas_x * scale_x, canvas_y * scale_y);
+            let (canvas_x, canvas_y) = (canvas_x, canvas_y);
+
+            for x in 0..(scale_x) {
+                for y in 0..(scale_y) {
+                    (set_output)(canvas_x + x, canvas_y + y, is_set);
+                }
+            }
+        }
     }
 }
 

@@ -34,7 +34,7 @@ pub struct Piece {
 }
 
 #[derive(Rand, Sequence)]
-enum NextPiece {
+enum PieceSelector {
     Line,
     J,
     L,
@@ -44,11 +44,11 @@ enum NextPiece {
     Z,
 }
 
-impl NextPiece {
+impl PieceSelector {
     fn to_piece(&self, (x, y): (usize, usize)) -> Piece {
         pub use Rotation::*;
         let rotations = match self {
-            NextPiece::Line => {
+            PieceSelector::Line => {
                 enum_map! {
                     R0 => Grid::of_data((4, 1), vec![true, true, true, true]),
                     R90 => Grid::of_data((1, 4), vec![true, true, true, true]),
@@ -56,7 +56,7 @@ impl NextPiece {
                     R270 => Grid::of_data((1, 4), vec![true, true, true, true]),
                 }
             }
-            NextPiece::J => {
+            PieceSelector::J => {
                 enum_map! {
                     R0 => Grid::of_data((4, 2), vec![true, false, false, false, true, true, true, true]),
                     R90 => Grid::of_data((2, 4), vec![true, true, true, false, true, false, true, false]),
@@ -65,7 +65,7 @@ impl NextPiece {
                 }
             }
 
-            NextPiece::L => {
+            PieceSelector::L => {
                 enum_map! {
                     R0 => Grid::of_data((4, 2), vec![false, false, false, true, true, true, true, true]),
                     R90 => Grid::of_data((2, 4), vec![true, true, false, true, false, true, false, true]),
@@ -73,7 +73,7 @@ impl NextPiece {
                     R270 => Grid::of_data((2, 4), vec![false, true, false, true, false, true, true, true]),
                 }
             }
-            NextPiece::O => {
+            PieceSelector::O => {
                 enum_map! {
                     R0 => Grid::of_data((2, 2), vec![true, true, true, true]),
                     R90 => Grid::of_data((2, 2),vec![true, true, true, true]  ),
@@ -81,7 +81,7 @@ impl NextPiece {
                     R270 => Grid::of_data((2, 2), vec![true, true, true, true] ),
                 }
             }
-            NextPiece::S => {
+            PieceSelector::S => {
                 enum_map! {
                     R0 => Grid::of_data((3, 2), vec![false, true, true, true, true, false]),
                     R90 => Grid::of_data((2, 3), vec![true, false, true, true, false, true]),
@@ -89,7 +89,7 @@ impl NextPiece {
                     R270 => Grid::of_data((2, 3), vec![false, true, true, true, true, false]),
                 }
             }
-            NextPiece::T => {
+            PieceSelector::T => {
                 enum_map! {
                     R0 => Grid::of_data((3, 2), vec![false, true, false, true, true, true]),
                     R90 => Grid::of_data((2, 3), vec![true, false, true, true, true, false]),
@@ -97,7 +97,7 @@ impl NextPiece {
                     R270 => Grid::of_data((2, 3), vec![false, true, true, true, false, true]),
                 }
             }
-            NextPiece::Z => {
+            PieceSelector::Z => {
                 enum_map! {
                     R0 => Grid::of_data((3, 2), vec![true, true, false, false, true, true]),
                     R90 => Grid::of_data((2, 3), vec![false, true, true, true, true, false]),
@@ -118,7 +118,7 @@ impl NextPiece {
 
 impl Piece {
     pub fn random_piece<R: Rng>(offset: (usize, usize), rng: &mut R) -> Self {
-        rng.gen::<NextPiece>().to_piece(offset)
+        rng.gen::<PieceSelector>().to_piece(offset)
     }
 
     pub fn next_rotation(&mut self) {
@@ -136,12 +136,12 @@ impl Piece {
 
 #[cfg(test)]
 mod test {
-    use crate::piece::NextPiece;
+    use crate::piece::PieceSelector;
     use enum_iterator::all;
 
     #[test]
     pub fn construct_and_rotate_every_piece() {
-        for next_piece in all::<NextPiece>() {
+        for next_piece in all::<PieceSelector>() {
             let mut piece = next_piece.to_piece((5, 5));
             for _ in 0..8 {
                 piece.next_rotation();

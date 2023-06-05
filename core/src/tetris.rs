@@ -1,7 +1,7 @@
 use crate::grid::Grid;
 use crate::piece::Piece;
 use itertools::iproduct;
-use rand::{rngs::ThreadRng, thread_rng};
+use rand::{SeedableRng, rngs::{SmallRng}};
 
 const GRID_SIZE: (usize, usize) = (10, 20);
 const PIECE_START_LOCATION: (usize, usize) = (5, 19);
@@ -22,7 +22,7 @@ pub struct TetrisState {
     pub grid: Grid,
     pub key_state: KeyState,
     pub score: usize,
-    rng: ThreadRng,
+    rng: SmallRng,
 }
 
 impl TetrisState {
@@ -92,7 +92,7 @@ pub enum Tetris {
 
 impl Tetris {
     pub fn new() -> Self {
-        let mut rng = thread_rng();
+        let mut rng = SmallRng::seed_from_u64(/* TODO: Supply with OS entropy when creating Tetris */ 31203103120);
         let piece = Piece::random_piece(PIECE_START_LOCATION, &mut rng);
         let next_piece = Piece::random_piece(PIECE_START_LOCATION, &mut rng);
         Self::Running(TetrisState {

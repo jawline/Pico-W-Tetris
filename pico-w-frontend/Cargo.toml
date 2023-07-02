@@ -18,6 +18,7 @@ panic-halt= "0.2.0"
 ssd1306 = "0.7.1"
 embedded-graphics = "0.7.1"
 tetris_core = { path = "../core" }
+embedded-alloc = "0.5.0"
 
 [[bin]]
 name = "test"

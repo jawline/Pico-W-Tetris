@@ -1,7 +1,8 @@
 #![no_std]
 #![no_main]
 
-use crate::hal::gpio::bank0::{Gpio2, Gpio3, Gpio4, Gpio5, Gpio6, Gpio7};
+use crate::hal::gpio::bank0::*;
+use crate::hal::gpio::PushPullOutput;
 use cortex_m_rt::entry;
 use defmt_rtt as _;
 use embedded_alloc::Heap;
@@ -49,10 +50,23 @@ pub struct Screen<'a, DI, SIZE, MODE, C: PixelColor> {
 impl<'a, DI: WriteOnlyDataCommand, SIZE: ssd1306::prelude::DisplaySize>
     Screen<'a, DI, SIZE, BufferedGraphicsMode<SIZE>, BinaryColor>
 {
-    pub fn draw_row(&mut self, row: u32) {
-        for i in 0..self.dim.width {
+    pub fn draw_row(&mut self, row: u32, (start_x, end_x): (u32, u32)) {
+        for i in start_x..end_x {
             self.display.set_pixel(i, row, true);
         }
+    }
+
+    pub fn draw_col(&mut self, col: u32, (start_y, end_y): (u32, u32)) {
+        for i in start_y..end_y {
+            self.display.set_pixel(col, i, true);
+        }
+    }
+
+    pub fn draw_rect(&mut self, (min_x, min_y): (u32, u32), (max_x, max_y): (u32, u32)) {
+        self.draw_row(min_y, (min_x, max_x));
+        self.draw_row(max_y, (min_x, max_x));
+        self.draw_col(min_x, (min_y, max_y));
+        self.draw_col(max_x, (min_y, max_y));
     }
 
     pub fn clear(&mut self) {
@@ -75,12 +89,15 @@ impl<'a, DI: WriteOnlyDataCommand, SIZE: ssd1306::prelude::DisplaySize>
 }
 
 struct Buttons {
-    pub up: Pin<Gpio2, PullDownInput>,
-    pub left: Pin<Gpio3, PullDownInput>,
-    pub down: Pin<Gpio4, PullDownInput>,
-    pub right: Pin<Gpio5, PullDownInput>,
-    pub a: Pin<Gpio6, PullDownInput>,
-    pub b: Pin<Gpio7, PullDownInput>,
+    // Left = Gpio22
+    // Right = 19 and 18 (Hardware bug, fix)
+    // Down = 16
+    pub up: Pin<Gpio18, PullDownInput>,
+    pub left: Pin<Gpio22, PullDownInput>,
+    pub down: Pin<Gpio19, PullDownInput>,
+    pub right: Pin<Gpio17, PullDownInput>,
+    pub a: Pin<Gpio16, PullDownInput>,
+    pub b: Pin<Gpio21, PullDownInput>,
 }
 
 impl Buttons {
@@ -109,6 +126,89 @@ impl Buttons {
 
     pub fn right_pressed(&self) -> bool {
         self.right.is_high().unwrap()
+    }
+}
+
+fn print_buttons<'a, DI: WriteOnlyDataCommand, SIZE: ssd1306::prelude::DisplaySize>(
+    screen: &mut Screen<'a, DI, SIZE, BufferedGraphicsMode<SIZE>, BinaryColor>,
+    buttons: &Buttons,
+    led_pin: &mut Pin<Gpio25, PushPullOutput>,
+) {
+    const CHR_SZ_X: i32 = 4;
+    let mut btn = false;
+    if buttons.left_pressed() {
+        screen.text("L", Point::new(screen.dim.width as i32 - CHR_SZ_X, 0));
+        btn = true;
+    }
+
+    if buttons.right_pressed() {
+        screen.text("R", Point::new(screen.dim.width as i32 - (CHR_SZ_X * 2), 0));
+        btn = true;
+    }
+
+    if buttons.up_pressed() {
+        screen.text("U", Point::new(screen.dim.width as i32 - (CHR_SZ_X * 3), 0));
+        btn = true;
+    }
+
+    if buttons.down_pressed() {
+        screen.text("D", Point::new(screen.dim.width as i32 - (CHR_SZ_X * 4), 0));
+        btn = true;
+    }
+
+    if buttons.a_pressed() {
+        screen.text("A", Point::new(screen.dim.width as i32 - (CHR_SZ_X * 5), 0));
+        btn = true;
+    }
+
+    if buttons.b_pressed() {
+        screen.text("B", Point::new(screen.dim.width as i32 - (CHR_SZ_X * 6), 0));
+        btn = true;
+    }
+
+    if btn {
+        led_pin.set_high().unwrap();
+    } else {
+        led_pin.set_low().unwrap();
+    }
+}
+
+fn print_tetris<'a, DI: WriteOnlyDataCommand, SIZE: ssd1306::prelude::DisplaySize>(
+    screen: &mut Screen<'a, DI, SIZE, BufferedGraphicsMode<SIZE>, BinaryColor>,
+    tetris: &Tetris,
+) {
+    screen.draw_rect((1, 9), (43, 50));
+    match tetris {
+        Tetris::Running(ref state) => {
+            state.draw_game_grid(
+                |x, y, v| {
+                    screen.display.set_pixel(x as u32, y as u32, v);
+                },
+                (2, 10),
+                (4, 2),
+            );
+        }
+        Tetris::Finished => {}
+    }
+}
+
+fn update(tetris: &mut Tetris, buttons: &Buttons) {
+    let key_state = KeyState {
+        left: buttons.left_pressed(),
+        right: buttons.right_pressed(),
+        rotate: buttons.a_pressed(),
+    };
+
+    tetris.set_key_state(&key_state);
+    tetris.update();
+
+    match tetris {
+        Tetris::Running(ref _state) => {}
+        Tetris::Finished => {
+            if buttons.b_pressed() {
+                *tetris = Tetris::new();
+            }
+        }
     }
 }
 
@@ -152,12 +252,12 @@ fn main() -> ! {
     btn_pwr.set_high().unwrap();
 
     let buttons = Buttons {
-        up: pins.gpio2.into_pull_down_input(),
-        left: pins.gpio3.into_pull_down_input(),
-        down: pins.gpio4.into_pull_down_input(),
-        right: pins.gpio5.into_pull_down_input(),
-        a: pins.gpio6.into_pull_down_input(),
-        b: pins.gpio7.into_pull_down_input(),
+        up: pins.gpio18.into_pull_down_input(),
+        left: pins.gpio22.into_pull_down_input(),
+        down: pins.gpio19.into_pull_down_input(),
+        right: pins.gpio17.into_pull_down_input(),
+        a: pins.gpio16.into_pull_down_input(),
+        b: pins.gpio21.into_pull_down_input(),
     };
 
     let mut delay = cortex_m::delay::Delay::new(core.SYST, clocks.system_clock.freq().integer());
@@ -193,42 +293,16 @@ fn main() -> ! {
         text_style,
     };
 
-    let mut last_led = false;
-
     let mut tetris = Tetris::new();
 
     loop {
-        let key_state = KeyState {
-            left: buttons.left_pressed(),
-            right: buttons.right_pressed(),
-            rotate: buttons.a_pressed(),
-        };
-        tetris.set_key_state(&key_state);
-        tetris.update();
-
+        update(&mut tetris, &buttons);
         screen.clear();
 
-        match tetris {
-            Tetris::Running(ref state) => {
-                state.draw_game_grid(
-                    |x, y, v| {
-                        screen.display.set_pixel(x as u32, y as u32, v);
-                    },
-                    (2, 1),
-                    (2, 2),
-                );
-            }
-            Tetris::Finished => tetris = Tetris::new(),
-        }
-
-        if last_led {
-            led_pin.set_low().unwrap();
-        } else {
-            led_pin.set_high().unwrap();
-        }
-        last_led = !last_led;
+        print_tetris(&mut screen, &mut tetris);
+        print_buttons(&mut screen, &buttons, &mut led_pin);
 
         screen.flush();
-        delay.delay_ms(500);
+        delay.delay_ms(100);
     }
 }

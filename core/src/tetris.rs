@@ -72,9 +72,8 @@ impl TetrisState {
             };
 
             let is_set = self.grid[(x, y)] || in_piece;
-            let (canvas_x, canvas_y) = (x + x_off, ((self.grid.height - y) + 1) + y_off);
-            let (canvas_x, canvas_y) = (canvas_x * scale_x, canvas_y * scale_y);
-            let (canvas_x, canvas_y) = (canvas_x, canvas_y);
+            let (canvas_x, canvas_y) = (x, ((self.grid.height - 1- y)));
+            let (canvas_x, canvas_y) = ((canvas_x * scale_x) + x_off, (canvas_y * scale_y) + y_off);
 
             for x in 0..(scale_x) {
                 for y in 0..(scale_y) {
